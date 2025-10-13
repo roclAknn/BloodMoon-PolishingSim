@@ -1,5 +1,5 @@
 # BloodMoon-GrindingSim
-GitHub Pages → https://roclaknn.github.io/BloodMoon-GrindingSim/
+GitHub Pages → https://roclaknn.github.io/BloodMoon-GrindingSim/<br><br>
 紅き月の森 宝玉の研磨強化（左ライン）の簡単なシミュレーター（出力ツール）です<br>
 リセットするか悩んだ時にどうぞ<br>
 <br>
