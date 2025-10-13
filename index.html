@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>/MapleStory/ 紅き月の森 研磨シミュレーター</title>
+  <meta name="description" content="紅き月の森 研磨強化(左ライン)での合計点数ごとの確率表を出力">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      color: #1e293b;
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    #jobSelect {
+      width: 220px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 8px 4px;
+      text-align: center;
+      font-size: 16px;
+      margin-bottom: 0.75rem;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .input-section label {
+      display: block;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 0.75rem;
+    }
+    input[type="range"] {
+      width: 100%;
+      height: 12px;
+      background: #e2e8f0;
+      border-radius: 6px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 24px;
+      height: 24px;
+      background: #2563eb;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      background: #2563eb;
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+    }
+    .stage-value {
+      text-align: center;
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #2563eb;
+      margin-top: 1rem;
+    }
+    .card h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 1rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    thead tr {
+      border-bottom: 2px solid #cbd5e1;
+    }
+    th {
+      padding: 0.75rem;
+      text-align: left;
+      color: #475569;
+      font-weight: 600;
+    }
+    th:last-child {
+      text-align: right;
+    }
+    tbody tr {
+      border-bottom: 1px solid #e2e8f0;
+    }
+    tbody tr:hover {
+      background: #f8fafc;
+    }
+    td {
+      padding: 0.75rem;
+      color: #1e293b;
+    }
+    td:last-child {
+      text-align: right;
+      font-weight: 500;
+    }
+    canvas {
+      max-height: 300px;
+    }
+    @media (max-width: 640px) {
+      h1 {
+        font-size: 1.25rem;
+      }
+      .card {
+        padding: 1rem;
+      }
+      .stage-value {
+        font-size: 2rem;
+      }
+      table {
+        font-size: 0.85rem;
+      }
+      th, td {
+        padding: 0.5rem;
+      }
+    }
+    
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>紅き月の森 研磨シミュレーター</h1>
+    
+    <div class="card input-section">
+      <label>職業</label>
+      <select id="jobSelect" onchange="updateDisplay();">
+        <option value="normal" selected>一般</option>
+        <option value="da">デーモンアヴェンジャー</option>
+        <option value="xenon">ゼノン</option>
+      </select>
+      
+      <label>加工レベル</label>
+      <input type="range" id="stageSlider" min="0" max="10" value="0" onchange="updateDisplay();">
+      <div class="stage-value" id="stageValue">0</div>
+    </div>
+
+    <div class="card">
+      <h2>点数以上になる確率（グラフ）</h2>
+      <canvas id="chart"></canvas>
+    </div>
+    
+    <div class="card">
+      <h2>点数以上になる確率（テーブル）</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>点数</th>
+            <th>確率</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    const jobselect = document.getElementById('jobSelect');
+    const slider = document.getElementById('stageSlider');
+    const stageValue = document.getElementById('stageValue');
+    const tableBody = document.getElementById('tableBody');
+    
+    // グラフ初期化
+    const ctx = document.getElementById('chart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: '',
+          data: [],
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37, 99, 235, 0.1)',
+          tension: 0.4,
+          pointRadius: 0,
+          pointBackgroundColor: '#2563eb'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        interaction: {
+          mode: 'index', // 同じ x 座標の全データポイントを対象
+          intersect: false // データポイントを直接通過しなくても反応
+        },
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              title: function(contexts) {
+                return "点数: " + contexts[0].raw.y + "\n確率: " + contexts[0].raw.x.toFixed(4) + '%';
+              },
+              label: function(context) {
+                return '';
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            title: {
+              display: true,
+              text: '確率(%)',
+              font: { size: 14 }
+            },
+            reverse: true,
+            min: 0,
+            max: 100,
+    	    ticks: {
+              count: 10+1
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: '点数',
+              font: { size: 14 }
+            },
+            ticks: {
+              //動的に作成
+            }
+          },
+          yRight: {
+            // 動的に作成
+          }
+        },
+        onResize(chart, size) {
+          // グラフ幅が狭いときは右軸を非表示
+          const showRight = size.width > 480;
+          const scales = chart.options.scales;
+          if (scales.yRight.display == showRight) return;
+          scales.yRight.display = showRight;
+          chart.update();
+        }
+      }
+    });
+
+    function updateDisplay() {
+      let stage = slider.value;
+      stage = Math.max(0, Math.min(stage, 10));
+      stageValue.textContent = stage;
+      
+      const jobstat = jobstatus[jobselect.value];
+      const data = getTableList(stage).map(([point, prob]) => [point*jobstat, +(prob*100)]);
+      
+      // テーブル更新
+      tableBody.innerHTML = data.map(([point, prob]) => 
+        `<tr><td>${point}</td><td>${prob.toFixed(8)} %</td></tr>`
+      ).join('');
+      
+      // グラフ更新
+      chart.data.datasets[0].data = data.map(([point, prob]) =>{
+        return {x: prob, y: point};
+      });
+      
+      const scales = chart.options.scales;
+      let min = data[0][0];
+      let max = data[data.length-1][0];
+      Object.assign(scales.y, {
+         min: Math.floor(min/100) * 100,
+         max: Math.ceil(max/100) * 100,
+         ticks: {
+           count: 10+1,
+         }
+      });
+      scales.yRight = {
+        ...scales.y,
+        position: 'right',
+        title: {},
+        display: chart.width > 480
+      }
+      chart.update();
+    }
+    
+    
+    /* データ */
+    const probpattern = [
+      [65, 5, 10, 20],
+      [70, 6, 9, 15],
+      [75, 7, 8, 10],
+      [80, 8, 7, 5],
+      [85, 9, 4, 5]
+    ];
+    const probtable = [0,0,0,1,1,2,2,3,3,4];
+    const pointpattern = [
+      [1, 2, 3, 4],
+      [2, 4, 6, 8]
+    ];
+    const jobstatus = {
+      normal: 25,
+      da: 525,
+      xenon: 12
+    };
+    const pointtable = [0,0,0,0,0,1,1,1,1,1];
+    
+    function getTableList(stage){
+      const table1 = probtable.map(e => probpattern[e]);
+      const table2 = pointtable.map(e => pointpattern[e]);
+      
+      // 加工補正のリストを作成
+      const adjust = [];
+      for(var i = 0; i < 10; i++){
+        adjust[i] = i < stage ? (i < 5 ? 3 : 4) : 1;
+      }
+      
+      // 等価パターンのグループ化
+      const groups = {};
+      for (let i = 0; i < 10; i++) {
+        const key = JSON.stringify({ prob: table1[i], adj: adjust[i] });
+        if (!groups[key]) groups[key] = { prob: table1[i], adj: adjust[i], points: table2[i], count: 0 };
+        groups[key].count++;
+      }
+      
+      // 各グループの分布計算
+      let totalDist = new Map([[0, 1]]);
+      for (const g of Object.values(groups)) {
+        const singleDist = getDistribution(g.prob, g.points, g.adj);
+        const repeatedDist = powerDistribution(singleDist, g.count);
+        totalDist = combineDistributions(totalDist, repeatedDist);
+      }
+    
+      // 結果をソート
+      const sorted = Array.from(totalDist.entries()).sort((a,b)=>a[0]-b[0]);
+      
+      // 累積確率表に変換
+      const retlist = [];
+      let probsum = 1;
+      sorted.forEach(arr=>{
+        retlist.push([arr[0], Math.max(0, probsum)]);
+        probsum -= arr[1];
+      });
+      
+      return retlist;
+      
+      // 計算用関数
+      function combineDistributions(dist1, dist2) {
+        const result = new Map();
+        for (const [s1, p1] of dist1) {
+          for (const [s2, p2] of dist2) {
+            const score = s1 + s2;
+            result.set(score, (result.get(score) || 0) + p1 * p2);
+          }
+        }
+        return result;
+      }
+      
+      function powerDistribution(dist, n) {
+        let result = new Map([[0, 1]]);
+        for (let i = 0; i < n; i++) {
+          result = combineDistributions(result, dist);
+        }
+        return result;
+      }
+      
+      function getDistribution(prob, points, adj) {
+        const total = prob.reduce((a, b) => a + b, 0);
+        const map = new Map();
+        for (let i = 0; i < prob.length; i++) {
+          const score = points[i] * adj;
+          const p = prob[i] / total;
+          map.set(score, (map.get(score) || 0) + p);
+        }
+        return map;
+      }
+    }
+
+    slider.addEventListener('input', (e) => {
+      updateDisplay(parseInt(e.target.value));
+    });
+
+    // 初期表示
+    updateDisplay(0);
+  </script>
+</body>
+</html>
