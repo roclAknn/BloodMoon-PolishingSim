@@ -188,6 +188,46 @@
     const stageValue = document.getElementById('stageValue');
     const tableBody = document.getElementById('tableBody');
     
+    // 不均一幅ラベル
+    const labels = [0, 2, 5, 10, 20, 30, 40, 50, 60, 80, 100];
+    
+    const backgroundZones = [
+      { from: 0, to: 3, color: 'rgba(255, 230, 230, 0.5)' },
+      { from: 3, to: 8, color: 'rgba(230, 255, 230, 0.5)' },
+      { from: 8, to: 10, color: 'rgba(230, 230, 255, 0.5)' }
+    ];
+    
+    // 入力データX値を描画座標に変換する
+    function mapXToLinearIndex(x) {
+      for (let i = 0; i < labels.length - 1; i++) {
+        const x1 = labels[i];
+        const x2 = labels[i + 1];
+        if (x >= x1 && x <= x2) {
+          // 区間 [x1, x2] を [i, i+1] にマッピング
+          return i + (x - x1) / (x2 - x1);
+        }
+      }
+      // 範囲外なら外挿
+      if (x < labels[0]) return 0;
+      if (x > labels[labels.length - 1]) return labels.length - 1;
+      return x;
+    }
+    // プラグイン：区間背景を描画
+    const backgroundPlugin = {
+      id: 'zoneBackground',
+      beforeDatasetsDraw(chart, args, opts) {
+        const { ctx, chartArea, scales: { x, y } } = chart;
+        ctx.save();
+        backgroundZones.forEach(zone => {
+          const xStart = x.getPixelForValue(zone.from);
+          const xEnd = x.getPixelForValue(zone.to);
+          ctx.fillStyle = zone.color;
+          ctx.fillRect(xStart, chartArea.top, xEnd - xStart, chartArea.bottom - chartArea.top);
+        });
+        ctx.restore();
+      }
+    };
+    
     // グラフ初期化
     const ctx = document.getElementById('chart').getContext('2d');
     const chart = new Chart(ctx, {
@@ -204,6 +244,7 @@
           pointBackgroundColor: '#2563eb'
         }]
       },
+      plugins: [backgroundPlugin],
       options: {
         responsive: true,
         maintainAspectRatio: true,
@@ -218,7 +259,7 @@
           tooltip: {
             callbacks: {
               title: function(contexts) {
-                return "点数: " + contexts[0].raw.y + "\n確率: " + contexts[0].raw.x.toFixed(4) + '%';
+                return "点数: " + contexts[0].raw.y + "\n確率: " + contexts[0].raw.originalX.toFixed(4) + '%';
               },
               label: function(context) {
                 return '';
@@ -236,9 +277,12 @@
             },
             reverse: true,
             min: 0,
-            max: 100,
+            max: labels.length-1,
     	    ticks: {
-              count: 10+1
+    	      count: labels.length,
+              callback: (i, index, ticks) => {
+                return labels[i] !== undefined ? labels[i] : '';
+              }
             }
           },
           y: {
@@ -281,7 +325,7 @@
       
       // グラフ更新
       chart.data.datasets[0].data = data.map(([point, prob]) =>{
-        return {x: prob, y: point};
+        return {x: mapXToLinearIndex(prob), y: point, originalX: prob};
       });
       
       const scales = chart.options.scales;
