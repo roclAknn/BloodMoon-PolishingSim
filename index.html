@@ -61,9 +61,12 @@
       border-radius: 6px;
       outline: none;
       -webkit-appearance: none;
+      background-image: linear-gradient(#85a3fb, #85a3fb);
+      background-size: 0% 100%;
+      background-repeat: no-repeat;
     }
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
+    input[type="range"]::-webkit-slider-thumb 
+    , input[type="range"]::-moz-range-thumb {
       width: 24px;
       height: 24px;
       background: #2563eb;
@@ -71,11 +74,6 @@
       cursor: pointer;
     }
     input[type="range"]::-moz-range-thumb {
-      width: 24px;
-      height: 24px;
-      background: #2563eb;
-      border-radius: 50%;
-      cursor: pointer;
       border: none;
     }
     .stage-value {
@@ -314,6 +312,7 @@
       let stage = slider.value;
       stage = Math.max(0, Math.min(stage, 10));
       stageValue.textContent = stage;
+      slider.style.backgroundSize = `${stage*10}% 100%`;
       
       const jobstat = jobstatus[jobselect.value];
       const data = getTableList(stage).map(([point, prob]) => [point*jobstat, +(prob*100)]);
