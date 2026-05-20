@@ -7,7 +7,7 @@
   <title>/MapleStory/ 紅き月の森 研磨シミュレーター</title>
   <meta name="description" content="紅き月の森 宝玉の研磨強化(左ライン)をリセットするか悩んでる人に">
   <meta name="google-site-verification" content="vkAHjrHWlxI9ch267E96FHR8p9ajVqys8hCnFSBES8A" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <script src="chart3.9.1.min.js"></script>
   <style>
     * {
       margin: 0;
@@ -38,6 +38,7 @@
       padding: 8px 4px;
       text-align: center;
       font-size: 16px;
+      margin-top: 0.75rem;
       margin-bottom: 0.75rem;
     }
     .card {
@@ -52,36 +53,117 @@
       font-size: 1.1rem;
       font-weight: 600;
       color: #334155;
+    }
+    .slider-box {
+      display: flex;
+      gap: 12px;
+      align-items: center;
       margin-bottom: 0.75rem;
     }
-    input[type="range"] {
-      width: 100%;
-      height: 12px;
-      background: #e2e8f0;
-      border-radius: 6px;
-      outline: none;
-      -webkit-appearance: none;
-      background-image: linear-gradient(#85a3fb, #85a3fb);
-      background-size: 0% 100%;
-      background-repeat: no-repeat;
-    }
-    input[type="range"]::-webkit-slider-thumb 
-    , input[type="range"]::-moz-range-thumb {
-      width: 24px;
-      height: 24px;
-      background: #2563eb;
-      border-radius: 50%;
-      cursor: pointer;
-    }
-    input[type="range"]::-moz-range-thumb {
-      border: none;
-    }
-    .stage-value {
-      text-align: center;
-      font-size: 2.5rem;
+    .range-value {
+      width: 3rem;
+      font-size: 2rem;
       font-weight: bold;
       color: #2563eb;
-      margin-top: 1rem;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    /* スライダー：広いタップ領域 + トラック下に目盛り */
+    .range-shell {
+      flex: 1;
+      position: relative;
+      min-height: 52px;
+      display: flex;
+      align-items: center;
+      --range-thumb-r: 15px;
+      --range-track-h: 11px;
+    }
+    .range-track {
+      position: absolute;
+      left: var(--range-thumb-r);
+      right: var(--range-thumb-r);
+      top: 50%;
+      transform: translateY(-50%);
+      height: var(--range-track-h);
+      border-radius: 999px;
+      background: #e2e8f0;
+      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+      pointer-events: none;
+    }
+    .range-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #4f46e5, #7c8ef5);
+      pointer-events: none;
+    }
+    .range-ticks {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      pointer-events: none;
+    }
+    .range-tick {
+      position: absolute;
+      top: -4px;
+      bottom: -4px;
+      width: 2px;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.22);
+      border-radius: 1px;
+    }
+    input[type="range"].range-field {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 48px;
+      margin: 0;
+      background: transparent;
+      cursor: pointer;
+      position: relative;
+      z-index: 1;
+      outline: none;
+    }
+    input[type="range"].range-field::-webkit-slider-runnable-track {
+      height: var(--range-track-h);
+      background: transparent;
+      border-radius: 999px;
+    }
+    input[type="range"].range-field::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: calc(var(--range-thumb-r) * 2);
+      height: calc(var(--range-thumb-r) * 2);
+      margin-top: calc((var(--range-track-h) - var(--range-thumb-r) * 2) / 2);
+      border-radius: 50%;
+      background: linear-gradient(180deg, #3b82f6, #1d4ed8);
+      border: 3px solid #fff;
+      box-shadow: 0 2px 10px rgba(37, 99, 235, 0.45);
+    }
+    input[type="range"].range-field::-moz-range-track {
+      height: var(--range-track-h);
+      background: transparent;
+      border-radius: 999px;
+    }
+    input[type="range"].range-field::-moz-range-thumb {
+      width: calc(var(--range-thumb-r) * 2);
+      height: calc(var(--range-thumb-r) * 2);
+      border-radius: 50%;
+      background: linear-gradient(180deg, #3b82f6, #1d4ed8);
+      border: 3px solid #fff;
+      box-shadow: 0 2px 10px rgba(37, 99, 235, 0.45);
+      box-sizing: border-box;
+    }
+    input[type="range"].range-field:focus-visible::-webkit-slider-thumb {
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.35), 0 2px 10px rgba(37, 99, 235, 0.45);
+    }
+    input[type="range"].range-field:focus-visible::-moz-range-thumb {
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.35), 0 2px 10px rgba(37, 99, 235, 0.45);
     }
     .card h2 {
       font-size: 1.1rem;
@@ -154,10 +236,29 @@
         <option value="da">デーモンアヴェンジャー</option>
         <option value="xenon">ゼノン</option>
       </select>
+      <label>研磨レベル(左)</label>
+      <div class="slider-box">
+        <div class="range-value" id="polishValue">0</div>
+        <div class="range-shell">
+          <div class="range-track" aria-hidden="true">
+            <div class="range-fill" id="polishFill"></div>
+            <div class="range-ticks" id="polishTicks"></div>
+          </div>
+          <input type="range" id="polishSlider" class="polishSlider range-field" min="0" max="20" value="0">
+        </div>
+      </div>
       
-      <label>加工レベル</label>
-      <input type="range" id="stageSlider" min="0" max="10" value="0" onchange="updateDisplay();">
-      <div class="stage-value" id="stageValue">0</div>
+      <label>加工レベル(右)</label>
+      <div class="slider-box">
+        <div class="range-value" id="stageValue">0</div>
+        <div class="range-shell">
+          <div class="range-track" aria-hidden="true">
+            <div class="range-fill" id="stageFill"></div>
+            <div class="range-ticks" id="stageTicks"></div>
+          </div>
+          <input type="range" id="stageSlider" class="stageSlider range-field" min="0" max="20" value="0">
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -182,9 +283,43 @@
 
   <script>
     const jobselect = document.getElementById('jobSelect');
+    const polishslider = document.getElementById('polishSlider');
+    const polishvalue = document.getElementById('polishValue');
     const slider = document.getElementById('stageSlider');
     const stageValue = document.getElementById('stageValue');
     const tableBody = document.getElementById('tableBody');
+    const polishFill = document.getElementById('polishFill');
+    const stageFill = document.getElementById('stageFill');
+    const polishTicks = document.getElementById('polishTicks');
+    const stageTicks = document.getElementById('stageTicks');
+
+    /** 左トラックの塗り（ドラッグ中も input で同期） */
+    function syncRangeFills() {
+      const pmax = Math.max(1, +polishslider.max);
+      const smax = Math.max(1, +slider.max);
+      const p = +polishslider.value;
+      const s = +slider.value;
+      polishFill.style.width = `${(p / pmax) * 100}%`;
+      stageFill.style.width = `${(s / smax) * 100}%`;
+    }
+
+    /** 5 刻みの区切り線（0 と max は除く） */
+    function rebuildTicks(container, maxVal) {
+      container.innerHTML = '';
+      const m = Math.max(0, Math.floor(Number(maxVal)));
+      for (let v = 5; v < m; v += 5) {
+        const el = document.createElement('div');
+        el.className = 'range-tick';
+        el.style.left = `${(v / m) * 100}%`;
+        container.appendChild(el);
+      }
+    }
+
+    function refreshRangeTicks() {
+      const m = +polishslider.max;
+      rebuildTicks(polishTicks, m);
+      rebuildTicks(stageTicks, m);
+    }
     
     // 不均一幅ラベル
     const labels = [0, 2, 5, 10, 20, 30, 40, 50, 60, 80, 100];
@@ -308,14 +443,24 @@
       }
     });
 
+    let rangeTicksMax = -1;
+
     function updateDisplay() {
-      let stage = slider.value;
-      stage = Math.max(0, Math.min(stage, 10));
+      const polishmax = +polishslider.max;
+      const polish = +polishslider.value;
+      const stage = +slider.value;
+
+      if (rangeTicksMax !== polishmax) {
+        rangeTicksMax = polishmax;
+        refreshRangeTicks();
+      }
+
+      polishvalue.textContent = polish;
       stageValue.textContent = stage;
-      slider.style.backgroundSize = `${stage*10}% 100%`;
+      syncRangeFills();
       
       const jobstat = jobstatus[jobselect.value];
-      const data = getTableList(stage).map(([point, prob]) => [point*jobstat, +(prob*100)]);
+      const data = getTableList(stage, polish).map(([point, prob]) => [point*jobstat, +(prob*100)]);
       
       // テーブル更新
       tableBody.innerHTML = data.map(([point, prob]) => 
@@ -349,46 +494,69 @@
     
     /* データ */
     const probpattern = [
-      [65, 5, 10, 20],
-      [70, 6, 9, 15],
-      [75, 7, 8, 10],
-      [80, 8, 7, 5],
-      [85, 9, 4, 2]
+      [65, 5, 10, 20], // 1,2,3
+      [70, 6, 9, 15], // 4,5
+      [75, 7, 8, 10], // 6,7
+      [80, 8, 7, 5], // 8,9
+      [85, 9, 4, 2], // 10
+      [65, 15, 10, 10], //11
+      [70, 10, 10, 10], //12
+      [80, 10,  5,  5], //13
+      [85, 6, 5, 4], //14
+      [90, 5, 3, 2], //15
+      /* 以降不明 */
     ];
-    const probtable = [0,0,0,1,1,2,2,3,3,4];
+    const probtable = [0,0,0,1,1, 2,2,3,3,4, 5,6,7,8,9];
     const pointpattern = [
       [1, 2, 3, 4],
-      [2, 4, 6, 8]
+      [2, 4, 6, 8],
+      [3, 6, 9, 12],
+      [4, 8, 12, 16],
     ];
     const jobstatus = {
       normal: 25,
       da: 525,
       xenon: 12
     };
-    const pointtable = [0,0,0,0,0,1,1,1,1,1];
-    
-    function getTableList(stage){
+    const pointtable = [
+      ...new Array(5).fill(0), ...new Array(5).fill(1),
+      ...new Array(5).fill(2), ...new Array(5).fill(3),
+    ];
+    /* 研磨確率表のみ不明なのでprobtableの長さに合わせる */
+    const polishdata = probtable.map( (patternidx, idx) => {
+      return {
+        probs: probpattern[patternidx],
+        points: pointpattern[pointtable[idx]], 
+      };
+    });
+
+    polishslider.max = slider.max = polishdata.length;
+
+    function getTableList(stage, polish){
       const table1 = probtable.map(e => probpattern[e]);
       const table2 = pointtable.map(e => pointpattern[e]);
       
       // 加工補正のリストを作成
-      const adjust = [];
-      for(var i = 0; i < 10; i++){
-        adjust[i] = i < stage ? (i < 5 ? 3 : 4) : 1;
+      const adjust = [
+        ...new Array(5).fill(3), ...new Array(5).fill(4),
+        ...new Array(5).fill(5), ...new Array(5).fill(6),
+      ]; 
+      for(var i = stage; i < adjust.length; i++){
+        adjust[i] = 1;
       }
       
       // 等価パターンのグループ化
       const groups = {};
-      for (let i = 0; i < 10; i++) {
-        const key = JSON.stringify({ prob: table1[i], adj: adjust[i] });
-        if (!groups[key]) groups[key] = { prob: table1[i], adj: adjust[i], points: table2[i], count: 0 };
+      for (let i = 0; i < polish; i++) {
+        const key = JSON.stringify({ prob: polishdata[i].probs, adj: adjust[i] });
+        if (!groups[key]) groups[key] = { ...polishdata[i], adj: adjust[i], count: 0 };
         groups[key].count++;
       }
       
       // 各グループの分布計算
       let totalDist = new Map([[0, 1]]);
       for (const g of Object.values(groups)) {
-        const singleDist = getDistribution(g.prob, g.points, g.adj);
+        const singleDist = getDistribution(g.probs, g.points, g.adj);
         const repeatedDist = powerDistribution(singleDist, g.count);
         totalDist = combineDistributions(totalDist, repeatedDist);
       }
@@ -438,12 +606,13 @@
       }
     }
 
-    slider.addEventListener('input', (e) => {
-      updateDisplay(parseInt(e.target.value));
-    });
+    polishslider.addEventListener('input', updateDisplay);
+    slider.addEventListener('input', updateDisplay);
 
     // 初期表示
-    updateDisplay(0);
+    polishslider.value = polishdata.length;
+    slider.value = 10;
+    updateDisplay();
   </script>
 </body>
 
