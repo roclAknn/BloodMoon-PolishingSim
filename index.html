@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="canonical" href="https://roclaknn.github.io/BloodMoon-PolishingSim/">
-  <title>/MapleStory/ 紅き月の森 イニスの宝玉 研磨シミュレーター</title>
+  <title>/MapleStory/ 紅き月の森 研磨シミュレーター</title>
   <meta name="description" content="イニスの宝玉の研磨強化(左ライン)をリセットするかの参考用ツール">
   <meta name="google-site-verification" content="vkAHjrHWlxI9ch267E96FHR8p9ajVqys8hCnFSBES8A" />
   <script src="chart3.9.1.min.js"></script>
@@ -30,8 +30,18 @@
       font-size: 1.5rem;
       margin-bottom: 1.5rem;
     }
-    #jobSelect {
-      width: 220px;
+    .selects-div {
+      display: flex;
+      flex-direction: row;
+    }
+    .selects-div .select-div {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      gap: 10px;
+    }
+    .select-div select {
+      width: 200px;
       background: white;
       border: 1px solid #ddd;
       border-radius: 8px;
@@ -230,12 +240,24 @@
     <h1>紅き月の森 研磨シミュレーター</h1>
     
     <div class="card input-section">
-      <label>職業</label>
-      <select id="jobSelect" onchange="updateDisplay();">
-        <option value="normal" selected>一般</option>
-        <option value="da">デーモンアヴェンジャー</option>
-        <option value="xenon">ゼノン</option>
-      </select>
+      <div class="selects-div">
+        <div class="select-div">
+          <label>職業</label>
+          <select id="jobSelect" onchange="updateDisplay();">
+            <option value="normal" selected>一般</option>
+            <option value="da">デーモンアヴェンジャー</option>
+            <option value="xenon">ゼノン</option>
+          </select>
+        </div>
+        <div class="select-div">
+          <label>研磨計測開始レベル</label>
+          <select id="polishStartSelect" onchange="updateDisplay();">
+            <option value="0" selected>0</option>
+            <option value="10">10</option>
+            <option value="15">15</option>
+          </select>
+        </div>
+      </div>
       <label>研磨レベル(左)</label>
       <div class="slider-box">
         <div class="range-value" id="polishValue">0</div>
@@ -262,12 +284,12 @@
     </div>
 
     <div class="card">
-      <h2>点数以上になる確率（グラフ）</h2>
+      <h2 id="chartTitle">点数以上になる確率（グラフ）</h2>
       <canvas id="chart"></canvas>
     </div>
     
     <div class="card">
-      <h2>点数以上になる確率（テーブル）</h2>
+      <h2 id="tableTitle">点数以上になる確率（テーブル）</h2>
       <table>
         <thead>
           <tr>
@@ -283,6 +305,7 @@
 
   <script>
     const jobselect = document.getElementById('jobSelect');
+    const startpolishselect = document.getElementById('polishStartSelect');
     const polishslider = document.getElementById('polishSlider');
     const polishvalue = document.getElementById('polishValue');
     const slider = document.getElementById('stageSlider');
@@ -292,6 +315,8 @@
     const stageFill = document.getElementById('stageFill');
     const polishTicks = document.getElementById('polishTicks');
     const stageTicks = document.getElementById('stageTicks');
+    const chartTitle = document.getElementById('chartTitle');
+    const tableTitle = document.getElementById('tableTitle');
 
     /** 左トラックの塗り（ドラッグ中も input で同期） */
     function syncRangeFills() {
@@ -374,7 +399,7 @@
           backgroundColor: 'rgba(37, 99, 235, 0.1)',
           tension: 0.4,
           pointRadius: 0,
-          pointBackgroundColor: '#2563eb'
+          pointBackgroundColor: '#2563eb',
         }]
       },
       plugins: [backgroundPlugin],
@@ -461,23 +486,24 @@
       
       const jobstat = jobstatus[jobselect.value];
       const data = getTableList(stage, polish).map(([point, prob]) => [point*jobstat, +(prob*100)]);
-      
+
       // テーブル更新
       tableBody.innerHTML = data.map(([point, prob]) => 
         `<tr><td>${point}</td><td>${prob.toFixed(8)} %</td></tr>`
       ).join('');
-      
       // グラフ更新
-      chart.data.datasets[0].data = data.map(([point, prob]) =>{
+      const dataset = chart.data.datasets[0];
+      // グラフが空から表示するとぎこちないのでアニメーション切る
+      const wasEmpty = false;// dataset.data.length <= 1;
+      dataset.data = data.map(([point, prob]) =>{
         return {x: mapXToLinearIndex(prob), y: point, originalX: prob};
       });
-      
       const scales = chart.options.scales;
       let min = data[0][0];
       let max = data[data.length-1][0];
       Object.assign(scales.y, {
-         min: Math.floor(min/100) * 100,
-         max: Math.ceil(max/100) * 100,
+         min: Math.max(0, Math.floor(min/100) * 100),
+         max: Math.max(100, Math.ceil(max/100) * 100), // min=maxだとグラフ表示がぎこちなくなる
          ticks: {
            count: 10+1,
          }
@@ -489,6 +515,10 @@
         display: chart.width > 480
       }
       chart.update();
+
+      const text = `研磨 ${startpolishselect.value}→${polish} 区間のステータス点数の確率`;
+      chartTitle.textContent = `${text}（グラフ）`;
+      tableTitle.textContent = `${text}（テーブル）`;
     }
     
     
@@ -547,7 +577,7 @@
       
       // 等価パターンのグループ化
       const groups = {};
-      for (let i = 0; i < polish; i++) {
+      for (let i = +startpolishselect.value; i < polish; i++) {
         const key = JSON.stringify({ prob: polishdata[i].probs, adj: adjust[i] });
         if (!groups[key]) groups[key] = { ...polishdata[i], adj: adjust[i], count: 0 };
         groups[key].count++;
@@ -560,7 +590,7 @@
         const repeatedDist = powerDistribution(singleDist, g.count);
         totalDist = combineDistributions(totalDist, repeatedDist);
       }
-    
+
       // 結果をソート
       const sorted = Array.from(totalDist.entries()).sort((a,b)=>a[0]-b[0]);
       
